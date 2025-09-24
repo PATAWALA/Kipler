@@ -1,0 +1,14 @@
+# Backend
+Produco/node_modules/
+Produco/.env
+Produco/uploads/
+
+# Frontend
+produco-f/node_modules/
+produco-f/.env
+produco-f/dist/
+produco-f/build/
+
+# Système
+.DS_Store
+Thumbs.db
