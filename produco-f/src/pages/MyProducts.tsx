@@ -10,29 +10,11 @@ import {
 } from "../services/productServices";
 import { getCurrentUser } from "../utils/auth";
 import { UserType } from "../utils/types";
-import axios from "axios";
+import { getAxiosErrorMessage } from "../hooks/getAxiox";
+import { withSafeAuthor } from "../hooks/safeAuthor";
 
 interface MyProductsProps {
   initialProducts?: ProductType[];
-}
-
-function getAxiosErrorMessage(err: unknown): string {
-  if (axios.isAxiosError(err)) {
-    const data = err.response?.data as { message?: string } | undefined;
-    return data?.message ?? err.message;
-  }
-  if (err instanceof Error) return err.message;
-  return "Erreur inconnue";
-}
-
-function withSafeAuthor(p: ProductType, me: UserType | null): ProductType {
-  if (p.author && p.author.name) return p;
-  return {
-    ...p,
-    author: me
-      ? { _id: me._id, name: me.name }
-      : { _id: "", name: "Utilisateur inconnu" },
-  };
 }
 
 export default function MyProducts({ initialProducts = [] }: MyProductsProps) {
@@ -188,214 +170,329 @@ const handleUpdateProduct = async (e: React.FormEvent) => {
 
  return (
   <div className="p-6">
-    <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-      <h1 className="text-2xl font-bold text-gray-700">Mes Produits</h1>
-      <button
-        onClick={() => setModalOpen(true)}
-        className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-shadow shadow-md"
-      >
-        <Plus className="w-4 h-4" /> Ajouter un produit
-      </button>
-    </div>
+  {/* 🔹 Header Mes Produits */}
+  <motion.div
+    className="flex flex-col items-center justify-center text-center bg-white rounded-2xl shadow-sm p-6 mb-8"
+    initial={{ opacity: 0, y: -20 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ duration: 0.5 }}
+  >
+    {/* Titre + Texte */}
+  <h1 className="text-2xl font-bold text-gray-800 mb-2">
+    📦 Gestion de vos produits
+  </h1>
+  <p className="text-gray-500 max-w-md mb-6">
+    Ajoutez, modifiez ou supprimez vos produits facilement.  
+    Gardez votre catalogue toujours à jour.
+  </p>
 
-    {loading ? (
-      <div className="flex justify-center items-center h-64">
-        <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    ) : products.length === 0 ? (
-      <p className="text-gray-500 text-center mt-8">
-        Vous n'avez aucun produit pour l'instant.
-      </p>
-    ) : (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {products.map((p) => (
-          <div
-            key={p._id}
-            className="bg-white p-4 rounded-xl shadow hover:shadow-lg transition-shadow relative flex flex-col"
-          >
-            <img
-              src={p.image || "https://via.placeholder.com/150"}
-              alt={p.name}
-              className="w-full h-40 object-cover rounded-lg mb-3"
-            />
-            <h2 className="font-semibold text-gray-700 text-lg">{p.name}</h2>
-            <p className="text-gray-500 text-sm mb-2">{p.description}</p>
-            <p className="text-blue-600 font-bold mb-2">{p.price} FCFA</p>
+  {/* Bouton centré */}
+  <motion.button
+    onClick={() => setModalOpen(true)}
+    className="flex items-center gap-2 bg-green-600 text-white px-5 py-3 rounded-xl hover:bg-green-700 transition-all shadow-md hover:shadow-lg"
+    whileHover={{ scale: 1.05 }}
+    whileTap={{ scale: 0.95 }}
+  >
+    <Plus className="w-5 h-5" />
+    <span className="font-semibold">Nouveau produit</span>
+  </motion.button>
+  </motion.div>
 
-            {/* 🔹 Boutons modernisés */}
-            <div className="mt-auto flex gap-3 pt-3">
-                {/* Modifier */}
-                <button
-                  onClick={() => {
-                    setEditingProduct(p);
-                    setName(p.name);
-                    setPrice(p.price);
-                    setDescription(p.description || "");
-                    setImageFile(null);
-                    setEditModalOpen(true);
-                  }}
-                  className="flex items-center gap-2 px-2 py-2 bg-blue-100 hover:bg-blue-100 text-blue-600 font-medium rounded-lg shadow-sm transition"
-                >              
-                  <Edit2 size={18} />
-                  Modifier
-                </button>
+  {/* 🔹 Chargement */}
+  {loading ? (
+    <motion.div
+      className="flex justify-center items-center h-64"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+    >
+      <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+    </motion.div>
+  ) : products.length === 0 ? (
+    <motion.p
+      className="text-gray-500 text-center mt-8"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+    >
+      Vous n’avez aucun produit pour l’instant. Ajoutez-en un pour commencer ✨
+    </motion.p>
+  ) : (
+    <motion.div
+      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+    >
+      {products.map((p, i) => (
+        <motion.div
+          key={p._id}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: i * 0.05 }}
+          className="bg-white p-4 rounded-xl shadow hover:shadow-lg transition relative flex flex-col"
+        >
+          <img
+            src={p.image || "https://via.placeholder.com/150"}
+            alt={p.name}
+            className="w-full h-40 object-cover rounded-lg mb-3"
+          />
+          <h2 className="font-semibold text-gray-700 text-lg">{p.name}</h2>
+          <p className="text-gray-500 text-sm mb-2">{p.description}</p>
+          <p className="text-blue-600 font-bold mb-2">{p.price} FCFA</p>
 
-                {/* Supprimer */}
-                <button
-                  onClick={() => handleDeleteProduct(p._id)}
-                  className="flex items-center gap-2 px-2 py-2 bg-red-100 hover:bg-red-100 text-red-600 font-medium rounded-lg shadow-sm transition"
-                >              
-                  <Trash2 size={18} />
-                  Supprimer
-                </button>
-              </div>
+          {/* Boutons */}
+          <div className="mt-auto flex gap-3 pt-3">
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              onClick={() => {
+                setEditingProduct(p);
+                setName(p.name);
+                setPrice(p.price);
+                setDescription(p.description || "");
+                setImageFile(null);
+                setEditModalOpen(true);
+              }}
+              className="flex items-center gap-2 px-2 py-2 bg-blue-100 text-blue-600 font-medium rounded-lg shadow-sm"
+            >
+              <Edit2 size={18} /> Modifier
+            </motion.button>
 
-
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              onClick={() => handleDeleteProduct(p._id)}
+              className="flex items-center gap-2 px-2 py-2 bg-red-100 text-red-600 font-medium rounded-lg shadow-sm"
+            >
+              <Trash2 size={18} /> Supprimer
+            </motion.button>
           </div>
-        ))}
-      </div>
-    )}
+        </motion.div>
+      ))}
+    </motion.div>
+  )}
 
-    {/* 🔹 Modal Ajouter */}
-    <AnimatePresence>
-      {modalOpen && (
-        <motion.div
-          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
+  {/* 🔹 Modal Ajouter */}
+  <AnimatePresence>
+    {modalOpen && (
+      <motion.div
+        className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+      >
+        <motion.form
+          onSubmit={handleAddProduct}
+          className="bg-white rounded-2xl p-6 w-full max-w-md relative space-y-4 shadow-lg"
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.8, opacity: 0 }}
         >
-          <motion.div
-            className="bg-white rounded-2xl p-6 w-full max-w-md relative"
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.8, opacity: 0 }}
+          <button
+            onClick={() => setModalOpen(false)}
+            className="absolute top-3 right-3 p-1 hover:bg-gray-100 rounded-full"
           >
-            <button
+            <X className="w-5 h-5" />
+          </button>
+
+          <h2 className="text-xl font-bold text-gray-700">
+            ➕ Ajouter un produit
+          </h2>
+          <p className="text-sm text-gray-500 mb-2">
+            Remplissez les informations ci-dessous pour publier votre produit.
+          </p>
+
+          {/* Nom */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Nom du produit
+            </label>
+            <input
+              type="text"
+              placeholder="Ex : Chaussures Nike"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          {/* Prix */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Prix (FCFA)
+            </label>
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              placeholder="Ex : 2000"
+              value={price || ""}
+              onChange={(e) => setPrice(Number(e.target.value))}
+              required
+              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
+            <p className="text-xs text-gray-400 mt-1">
+              Indiquez un prix clair et réaliste.
+            </p>
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Description
+            </label>
+            <textarea
+              placeholder="Ajoutez une courte description..."
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          {/* Image */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Image du produit
+            </label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
+              required
+              className="w-full text-sm text-gray-600"
+            />
+          </div>
+
+          {/* Boutons */}
+          <div className="flex justify-end gap-3 pt-4">
+            <motion.button
+              type="button"
+              whileHover={{ scale: 1.05 }}
               onClick={() => setModalOpen(false)}
-              className="absolute top-3 right-3 p-1 hover:bg-gray-100 rounded-full"
+              className="px-4 py-2 rounded-lg border text-gray-600"
             >
-              <X className="w-5 h-5" />
-            </button>
+              Annuler
+            </motion.button>
+            <motion.button
+              type="submit"
+              whileHover={{ scale: 1.05 }}
+              disabled={isSubmitting}
+              className="px-4 py-2 rounded-lg bg-blue-600 text-white font-medium disabled:opacity-60"
+            >
+              {isSubmitting ? "Ajout..." : "Ajouter"}
+            </motion.button>
+          </div>
+        </motion.form>
+      </motion.div>
+    )}
+  </AnimatePresence>
 
-            <h2 className="text-xl font-bold mb-4 text-gray-700">
-              Ajouter un produit
-            </h2>
-            <form className="flex flex-col gap-3" onSubmit={handleAddProduct}>
-              <input
-                type="text"
-                placeholder="Nom du produit"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-              />
-              <input
-                type="number"
-                placeholder="Prix"
-                value={price}
-                onChange={(e) => setPrice(Number(e.target.value))}
-                required
-                className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-              />
-              <input
-                type="text"
-                placeholder="Description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-              />
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
-                required
-                className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-              />
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition mt-2 disabled:opacity-60"
-              >
-                {isSubmitting ? "Ajout..." : "Ajouter"}
-              </button>
-            </form>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-
-    {/* 🔹 Modal Modifier */}
-    <AnimatePresence>
-      {editModalOpen && editingProduct && (
-        <motion.div
-          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
+  {/* 🔹 Modal Modifier */}
+  <AnimatePresence>
+    {editModalOpen && editingProduct && (
+      <motion.div
+        className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+      >
+        <motion.form
+          onSubmit={handleUpdateProduct}
+          className="bg-white rounded-2xl p-6 w-full max-w-md relative space-y-4 shadow-lg"
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.8, opacity: 0 }}
         >
-          <motion.div
-            className="bg-white rounded-2xl p-6 w-full max-w-md relative"
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.8, opacity: 0 }}
+          <button
+            onClick={() => setEditModalOpen(false)}
+            className="absolute top-3 right-3 p-1 hover:bg-gray-100 rounded-full"
           >
-            <button
-              onClick={() => setEditModalOpen(false)}
-              className="absolute top-3 right-3 p-1 hover:bg-gray-100 rounded-full"
-            >
-              <X className="w-5 h-5" />
-            </button>
+            <X className="w-5 h-5" />
+          </button>
 
-            <h2 className="text-xl font-bold mb-4 text-gray-700">
-              Modifier le produit
-            </h2>
-            <form
-              className="flex flex-col gap-3"
-              onSubmit={handleUpdateProduct}
+          <h2 className="text-xl font-bold text-gray-700">✏️ Modifier le produit</h2>
+          <p className="text-sm text-gray-500 mb-2">
+            Mettez à jour les champs nécessaires puis enregistrez vos changements.
+          </p>
+
+          {/* Nom */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Nom du produit
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          {/* Prix */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Prix (FCFA)
+            </label>
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              value={price || ""}
+              onChange={(e) => setPrice(Number(e.target.value))}
+              required
+              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Description
+            </label>
+            <input
+              type="text"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          {/* Image */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Nouvelle image (facultatif)
+            </label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
+              className="w-full text-sm text-gray-600"
+            />
+          </div>
+
+          {/* Boutons */}
+          <div className="flex justify-end gap-3 pt-4">
+            <motion.button
+              type="button"
+              whileHover={{ scale: 1.05 }}
+              onClick={() => setEditModalOpen(false)}
+              className="px-4 py-2 rounded-lg border text-gray-600"
             >
-              <input
-                type="text"
-                placeholder="Nom du produit"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-              />
-              <input
-                type="number"
-                placeholder="Prix"
-                value={price}
-                onChange={(e) => setPrice(Number(e.target.value))}
-                required
-                className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-              />
-              <input
-                type="text"
-                placeholder="Description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-              />
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
-                className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-              />
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition mt-2 disabled:opacity-60"
-              >
-                {isSubmitting ? "Mise à jour..." : "Mettre à jour"}
-              </button>
-            </form>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  </div>
+              Annuler
+            </motion.button>
+            <motion.button
+              type="submit"
+              whileHover={{ scale: 1.05 }}
+              disabled={isSubmitting}
+              className="px-4 py-2 rounded-lg bg-green-600 text-white font-medium disabled:opacity-60"
+            >
+              {isSubmitting ? "Mise à jour..." : "Mettre à jour"}
+            </motion.button>
+          </div>
+        </motion.form>
+      </motion.div>
+    )}
+  </AnimatePresence>
+</div>
+
 );
 
 }

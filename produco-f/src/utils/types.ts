@@ -16,13 +16,21 @@ export interface UserType {
 // Interfaces des notifs
 export interface NotificationType {
   _id: string;
-  user: string; 
-  type: "like" | "new_product" | "block" | "unblock";
   message: string;
+  type: 
+    | "new_product"
+    | "message"
+    | "order_status"
+    | "like"
+    | "views"
+    | "system"; // pour d’autres cas
+  link?: string;
   read: boolean;
   createdAt: string;
-  link?:string
-};
+  targetRole?: "admin" | "user" | "all"; // 👈 Pour préciser la cible
+  userId?: string; // si c’est lié à un user spécifique
+}
+
 // Interface des Prouidts
 export interface Product {
   _id?: string;

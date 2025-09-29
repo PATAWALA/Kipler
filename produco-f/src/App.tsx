@@ -78,8 +78,8 @@ export default function App() {
           }
         >
           <Route index element={<UserDashboard />} />
-          <Route path="products" element={<MyProducts />}/>
-          <Route path="market" element={<AllProducts />}/>
+          <Route path="products" element={<MyProducts />} />
+          <Route path="market" element={<AllProducts />} />
           <Route path="gains" element={<MesGains />} />
           <Route path="contact" element={<ContactUsersPage />} />
           <Route path="notifications" element={<NotificationsPage />} />

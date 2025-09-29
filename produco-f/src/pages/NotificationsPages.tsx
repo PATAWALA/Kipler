@@ -13,18 +13,29 @@ export default function NotificationsPage() {
   const navigate = useNavigate();
 
   const handleClick = (notif: NotificationType) => {
-    if (!notif.read) markAsRead(notif._id);
+  if (!notif.read) markAsRead(notif._id);
 
-    // 🔹 Si un lien est défini, on redirige dessus
-    if (notif.link) {
-      // ⚡ Correction : si c'est une notif produit → redirection vers AllProducts
-      if (notif.type === "new_product") {
-        navigate("/market");
-      } else {
+  // 🔹 Gestion des redirections dynamiques
+  switch (notif.type) {
+    case "new_product":
+      navigate("/market");
+      break;
+
+    case "order_status":
+      navigate(`/orders/${notif.link}`); // exemple : lien vers une commande précise
+      break;
+
+    case "message":
+      navigate(`/messages/${notif.link}`);
+      break;
+
+    default:
+      if (notif.link) {
         navigate(notif.link);
       }
-    }
-  };
+      break;
+  }
+};
 
   return (
     <div className="max-w-3xl mx-auto p-6 mt-20">

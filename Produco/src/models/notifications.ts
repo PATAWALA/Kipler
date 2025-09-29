@@ -7,7 +7,7 @@ export interface INotification extends Document {
   data?: object; 
   isRead: boolean; 
   product?: string; 
-  link?: string; // 👈 lien de redirection
+  link?: string; 
   createdAt: Date;
 }
 
@@ -22,7 +22,7 @@ const NotificationSchema: Schema = new Schema({
   data: { type: Object, default: {} },
   isRead: { type: Boolean, default: false },
   product: { type: mongoose.Schema.Types.ObjectId, ref: "Product", required: false },
-  link: { type: String, default: "/user-dashboard/products" }, // 👈 par défaut vers marché
+  link: { type: String, default: "/user-dashboard/produts" },
   createdAt: { type: Date, default: Date.now }
 });
 

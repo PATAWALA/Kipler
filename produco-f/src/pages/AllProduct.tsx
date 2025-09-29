@@ -217,7 +217,7 @@ export default function AllProducts() {
 
                   {!isOwner && (
                     <p className="text-gray-500 text-sm mb-2">
-                      Publié par{" "}
+                      Auteur : {" "}
                       <span className="font-medium text-gray-700">
                         {product.author.name || "Utilisateur inconnu"}
                       </span>
