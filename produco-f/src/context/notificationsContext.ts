@@ -1,3 +1,4 @@
+// notificationsContext.ts
 import { createContext } from "react";
 import { NotificationType } from "../utils/types";
 

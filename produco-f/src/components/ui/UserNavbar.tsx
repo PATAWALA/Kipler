@@ -22,7 +22,7 @@ export default function UserNavbar({ onLogout }: UserNavbarProps) {
     );
 
   const { notifications } = notifContext;
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   if (!currentUser) return null;
 

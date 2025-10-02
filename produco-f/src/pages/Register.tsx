@@ -5,12 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff, ShoppingBag, UserPlus } from "lucide-react";
 import axios from "axios";
 import Logo from "../assets/logo.png";
-
-// Images produits
-import watch1 from "../assets/register/watch1.jpg";
-import clothes1 from "../assets/register/clothes1.jpg";
-import sneakers1 from "../assets/register/sneakers1.jpg";
-import accessory1 from "../assets/register/accessory1.jpg";
+import PromoCarousel from "../components/ui/PromoCarousel"; // <-- notre carrousel
 
 interface RegisterProps {
   setUser: React.Dispatch<React.SetStateAction<AuthUser | null>>;
@@ -50,134 +45,119 @@ export default function Register({ setUser }: RegisterProps) {
     }
   };
 
-  
-  const products = [
-    { id: 1, name: "Botte élégant", image: watch1 },
-    { id: 2, name: "Des Rollers ", image: clothes1 },
-    { id: 3, name: "Des Pulls", image: sneakers1 },
-    { id: 4, name: "Botte confortable", image: accessory1 },
-  ];
-
-
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50">
-      {/* HEADER */}
-      <header className="flex items-center px-6 py-4">
-        <img src={Logo} alt="Logo Produco" className="w-14 h-14 object-cover rounded-xl shadow-md" />
-        <h1 className="ml-3 text-2xl font-extrabold text-gray-800">Kipler</h1>
+    <div className="min-h-screen w-full bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50 flex flex-col">
+
+      {/* HEADER LOGO + DESCRIPTION */}
+      <header className="flex flex-col items-center justify-center py-8 px-4 md:py-12 md:px-16">
+        <img src={Logo} alt="Logo Kipler" className="w-16 h-16 md:w-20 md:h-20 object-cover rounded-xl shadow-md mb-4" />
+        <h1 className="text-3xl md:text-4xl font-extrabold text-gray-800 text-center">
+          Rejoignez <span className="text-purple-600">Kipler</span> 🎉
+        </h1>
+        <p className="text-gray-600 text-center mt-2 max-w-2xl">
+          Achetez les produits tendance et vendez facilement vos articles de luxe.
+        </p>
       </header>
 
-      {/* HERO / Produits populaires */}
-      <section className="px-6 py-8 md:px-12">
-        <h2 className="text-2xl md:text-3xl font-bold text-center text-gray-800 mb-6">
-          Découvrez les produits que vous allez adorer 🎉
-        </h2>
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          {products.map((p) => (
-            <div key={p.id} className="bg-white rounded-xl shadow hover:shadow-lg transition cursor-pointer overflow-hidden">
-              <img src={p.image} alt={p.name} className="w-full h-40 object-cover" />
-              <div className="p-2 text-center">
-                <h4 className="text-sm font-semibold">{p.name}</h4>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Boutons choix utilisateur */}
-        <div className="flex flex-wrap justify-center gap-4 mb-8">
-          <button
-            onClick={() => navigate("/market")}
-            className="flex items-center gap-2 bg-blue-500 text-white px-6 py-3 rounded-full shadow-md hover:bg-blue-600 transition"
-          >
-            <ShoppingBag size={18} />
-            Acheter directement
-          </button>
-
-          <button
-            onClick={() => navigate("/register")}
-            className="flex items-center gap-2 bg-purple-600 text-white px-6 py-3 rounded-full shadow-md hover:bg-purple-700 transition"
-          >
-            <UserPlus size={18} />
-            S'inscrire pour vendre & acheter
-          </button>
-        </div>
+      {/* CARROUSEL PROMO */}
+      <section className="w-full flex justify-center">
+        <PromoCarousel />
       </section>
 
-      {/* FORMULAIRE D'INSCRIPTION */}
-      <section className="bg-white p-8 rounded-3xl shadow-lg w-full max-w-md mx-auto mb-12">
-        <h2 className="text-lg font-semibold text-center text-gray-600 mb-4">
-          Créer un compte
-        </h2>
+      {/* CTA BUTTONS */}
+      <section className="flex flex-wrap justify-center gap-6 mt-6 px-4">
+        <button
+          onClick={() => navigate("/market")}
+          className="flex items-center gap-2 bg-blue-500 text-white px-6 py-3 rounded-full shadow-md hover:bg-blue-600 transition"
+        >
+          <ShoppingBag size={18} />
+          Acheter directement
+        </button>
+        <button
+          onClick={() => navigate("/register")}
+          className="flex items-center gap-2 bg-purple-600 text-white px-6 py-3 rounded-full shadow-md hover:bg-purple-700 transition"
+        >
+          <UserPlus size={18} />
+          S'inscrire pour vendre & acheter
+        </button>
+      </section>
 
-        {error && <p className="text-red-500 text-sm mb-3 text-center">{error}</p>}
+      {/* FORMULAIRE INSCRIPTION */}
+      <section className="flex justify-center mt-8 px-4 md:px-16 pb-12">
+        <div className="bg-white p-8 md:p-12 rounded-3xl shadow-lg w-full max-w-md">
+          <h2 className="text-lg font-semibold text-center text-gray-600 mb-4">
+            Créer un compte
+          </h2>
 
-        <form onSubmit={handleRegister} className="space-y-4">
-          <input
-            type="text"
-            placeholder="Nom complet"
-            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-400 focus:border-purple-400 outline-none transition"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-          />
-          <input
-            type="email"
-            placeholder="Email"
-            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-400 focus:border-purple-400 outline-none transition"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-          <input
-            type="tel"
-            placeholder="Téléphone"
-            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-400 focus:border-purple-400 outline-none transition"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            required
-          />
-          <div className="relative">
+          {error && <p className="text-red-500 text-sm mb-3 text-center">{error}</p>}
+
+          <form onSubmit={handleRegister} className="space-y-4">
             <input
-              type={showPassword ? "text" : "password"}
-              placeholder="Mot de passe"
+              type="text"
+              placeholder="Nom complet"
               className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-400 focus:border-purple-400 outline-none transition"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
               required
             />
+            <input
+              type="email"
+              placeholder="Email"
+              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-400 focus:border-purple-400 outline-none transition"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+            <input
+              type="tel"
+              placeholder="Téléphone"
+              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-400 focus:border-purple-400 outline-none transition"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              required
+            />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="Mot de passe"
+                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-400 focus:border-purple-400 outline-none transition"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-3 text-gray-400 hover:text-purple-600 transition"
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
+
             <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-3 text-gray-400 hover:text-purple-600 transition"
+              type="submit"
+              className="w-full bg-gradient-to-r from-purple-500 to-blue-500 text-white py-3 rounded-lg shadow-md transform transition duration-300 hover:scale-105 hover:shadow-xl"
             >
-              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              S'inscrire
             </button>
-          </div>
+          </form>
 
-          <button
-            type="submit"
-            className="w-full bg-gradient-to-r from-purple-500 to-blue-500 text-white py-3 rounded-lg shadow-md transform transition duration-300 hover:scale-105 hover:shadow-xl"
-          >
-            S'inscrire
-          </button>
-        </form>
-
-        <p className="mt-4 text-center text-sm text-gray-600">
-          Avez-vous déjà un compte ?{" "}
-          <span
-            onClick={() => navigate("/login")}
-            className="text-blue-500 font-semibold cursor-pointer hover:underline"
-          >
-            Me connecter 
-          </span>
-        </p>
+          <p className="mt-6 text-center text-sm text-gray-600">
+            Avez-vous déjà un compte ?{" "}
+            <span
+              onClick={() => navigate("/login")}
+              className="text-blue-500 font-semibold cursor-pointer hover:underline"
+            >
+              Me connecter 
+            </span>
+          </p>
+        </div>
       </section>
 
       {/* FOOTER */}
       <footer className="py-6 text-center bg-gray-100 mt-auto">
         <p className="text-gray-600 text-sm">
-          © 2025 Produco — Achetez et vendez en toute simplicité 🚀
+          © 2025 Kipler — Achetez et vendez en toute simplicité 🚀
         </p>
       </footer>
     </div>

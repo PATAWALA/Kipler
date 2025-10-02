@@ -7,6 +7,7 @@ import { emitNotification } from "../socket"; // ✅
 
 
 
+// 👤 Inscription utilisateur
 export const registerUser = async (req: Request, res: Response) => {
   try {
     const { name, email, password } = req.body;
@@ -21,13 +22,14 @@ export const registerUser = async (req: Request, res: Response) => {
     // 🔔 Notif admin pour toute nouvelle inscription
     const allAdmins = await User.find({ role: "admin" });
     for (const admin of allAdmins) {
-      const notif = await createNotification(
-        admin._id.toString(),
+      await createNotification(
         "new_user",
         `🎉 Nouvel utilisateur inscrit : ${newUser.name}`,
-        { userId: newUser._id }
+        {
+          userId: admin._id.toString(), // ✅ corrigé
+          link: `/users/${newUser._id.toString()}`,
+        }
       );
-      emitNotification(admin._id.toString(), notif);
     }
 
     res.status(201).json({
@@ -87,7 +89,7 @@ export const loginUser = async (req: Request, res: Response) => {
     // ✅ Connexion réussie
     res.json({
       _id: user._id.toString(),
-      name: (user as any).name, 
+      name: (user as any).name,
       email: user.email,
       role,
       token: generateToken(user._id.toString()),

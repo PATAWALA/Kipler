@@ -92,7 +92,13 @@ export async function getAllProducts(): Promise<ProductType[]> {
     console.log("🔍 BACK author:", p.author);
     return product;
   });
-}
+};
+
+// ✅ Récupérer les produits par catégorie
+export const getProductsByCategory = async (category: string): Promise<ProductType[]> => {
+  const res = await axios.get(`${API_URL}/category/${encodeURIComponent(category)}`);
+  return res.data;
+};
 
 export async function getProductsByUser(userId: string): Promise<ProductType[]> {
   const res = await axios.get<ProductResponse[]>(`${API_URL}/user/${userId}`, {

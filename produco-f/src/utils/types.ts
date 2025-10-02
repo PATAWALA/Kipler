@@ -13,23 +13,39 @@ export interface UserType {
   status?: "blocked"|"active";
   createdAt: string;
 };
-// Interfaces des notifs
+// types.ts ou utils/types.ts
+export interface NotificationData {
+  creatorId?: string;   // ⚡ utilisé pour filtrer l'auteur
+  productId?: string;   // ex: pour un produit lié à la notif
+  orderId?: string;     // ex: pour une commande
+  messageId?: string;   // ex: pour un chat
+  [key: string]: unknown; // extensible sans casser le typage
+}
+
+export type NotificationKind =
+  | "new_product"
+  | "message"
+  | "order_status"
+  | "like"
+  | "views"
+  | "system"
+  | "approve"
+  | "block"
+  | "new_user"; // ajoute au fur et à mesure tes autres types
+
 export interface NotificationType {
   _id: string;
   message: string;
-  type: 
-    | "new_product"
-    | "message"
-    | "order_status"
-    | "like"
-    | "views"
-    | "system"; // pour d’autres cas
+  type: NotificationKind;
   link?: string;
-  read: boolean;
+  isRead: boolean;
   createdAt: string;
-  targetRole?: "admin" | "user" | "all"; // 👈 Pour préciser la cible
-  userId?: string; // si c’est lié à un user spécifique
+  targetRole?: "admin" | "user" | "all";
+  userId?: string; 
+  data?: NotificationData;
+  autoDismiss?: number
 }
+
 
 // Interface des Prouidts
 export interface Product {

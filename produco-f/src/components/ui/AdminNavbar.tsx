@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useState, useContext } from "react"; 
 import { Bell, User, Camera } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { getCurrentUser, saveCurrentUser } from "../../utils/auth";
+import { NotificationContext } from "../../context/notificationsContext";
 
 interface AdminNavbarProps {
   onLogout: () => void;
@@ -12,6 +14,16 @@ export default function AdminNavbar({ onLogout }: AdminNavbarProps) {
     currentUser?.photo || ""
   );
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const navigate = useNavigate();
+
+  // ⚡ Notifications context
+  const notifContext = useContext(NotificationContext);
+  if (!notifContext)
+    throw new Error(
+      "NotificationContext must be used within a NotificationsProvider"
+    );
+  const { notifications } = notifContext;
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   if (!currentUser) return null;
 
@@ -37,11 +49,19 @@ export default function AdminNavbar({ onLogout }: AdminNavbarProps) {
       {/* Actions utilisateur */}
       <div className="flex items-center space-x-6 relative">
         {/* 🔔 Cloche notifications */}
-        <button className="relative">
+        <button
+          className="relative"
+          onClick={() => navigate("/admin-dashboard/notifications")}
+        >
           <Bell
             size={22}
             className="cursor-pointer text-gray-700 hover:text-green-600 transition"
           />
+          {unreadCount > 0 && (
+            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">
+              {unreadCount}
+            </span>
+          )}
         </button>
 
         {/* 👤 Avatar */}
@@ -79,7 +99,7 @@ export default function AdminNavbar({ onLogout }: AdminNavbarProps) {
                 className="w-full text-left text-sm text-gray-700 hover:bg-green-100 px-2 py-2 rounded-lg transition"
                 onClick={() => {
                   setDropdownOpen(false);
-                  window.location.href = "/admin-dashboard/profile";
+                  navigate("/admin-dashboard/profile");
                 }}
               >
                 Modifier profil
@@ -103,3 +123,4 @@ export default function AdminNavbar({ onLogout }: AdminNavbarProps) {
     </header>
   );
 }
+

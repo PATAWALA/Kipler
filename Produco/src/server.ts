@@ -1,4 +1,3 @@
-// server.ts
 import express from "express";
 import cors from "cors";
 import path from "path";
@@ -9,7 +8,7 @@ import productRoutes from "./routes/productRoutes";
 import userRoutes from "./routes/userRoutes";
 import transactionRoutes from "./routes/transactionsRoutes";
 import notificationRoutes from "./routes/notificationsRoutes"; 
-import { initSocket } from "./socket";
+import { initSocket } from "./socket"; 
 
 dotenv.config();
 
@@ -28,7 +27,7 @@ app.use("/uploads", express.static(path.resolve("uploads")));
 app.use("/api/products", productRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/transactions", transactionRoutes);
-app.use("/api/notifications", notificationRoutes); // ✅ ajout
+app.use("/api/notifications", notificationRoutes);
 
 // ✅ Connexion MongoDB
 mongoose
@@ -36,7 +35,7 @@ mongoose
   .then(() => {
     console.log("✅ Connecté à MongoDB Atlas !");
 
-    // 🔥 Initialiser Socket.IO
+    // 🔥 Initialiser Socket.IO (1 seule fois !)
     initSocket(server);
 
     // 🚀 Lancer serveur

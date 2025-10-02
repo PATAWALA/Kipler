@@ -12,7 +12,8 @@ import {
   publishProduct,
   likeProduct,
   unlikeProduct,
-  viewProduct,   // ✅ nouvelle fonction contrôleur
+  viewProduct,
+  getProductsByCategory   // ✅ nouvelle fonction contrôleur
 } from "../controllers/productController";
 import { protect, admin } from "../utils/middleware/authMiddleware";
 import upload from "../utils/middleware/uploadsMiddleware";
@@ -31,6 +32,9 @@ router.get("/:id", getProductById);
 
 // ➕ Incrémenter les vues (publique, pas besoin d’être connecté)
 router.post("/:id/view", viewProduct);
+
+// Récupérer produits d’une catégorie
+router.get("/category/:category", getProductsByCategory);
 
 /**
  * ✅ ROUTES PROTÉGÉES

@@ -18,7 +18,7 @@ import MainLayout from "./layouts/MainLayout";
 import { getCurrentUser, logoutUser } from "./utils/auth";
 import { UserType } from "./utils/types";
 import AdminGestionP from "./pages/AdminGestionP";
-import { NotificationsProvider } from "./context/notificationsProvider";
+import { NotificationProvider } from "./context/notificationsProvider";
 import NotificationsPage from "./pages/NotificationsPages";
 import ProtectedAdmin from "./components/ui/ProtectAdmin";
 
@@ -37,57 +37,74 @@ export default function App() {
   };
 
   return (
-    <NotificationsProvider userId={user?._id || ""}>
+    <NotificationProvider userId={user?._id} role={user?.role || "user"}>
       <Routes>
-        {/* Auth pages */}
-        <Route path="/login" element={<Login setUser={setUser} />} />
-        <Route path="/register" element={<Register setUser={setUser} />} />
+        {/* Routes publiques */}
+        {!user && (
+          <>
+            <Route path="/login" element={<Login setUser={setUser} />} />
+            <Route path="/register" element={<Register setUser={setUser} />} />
+            <Route path="*" element={<Navigate to="/login" replace />} />
+          </>
+        )}
 
         {/* Market accessible à tous */}
         <Route path="/market" element={<AllProducts />} />
 
-        {/* Admin Routes */}
-        <Route
-          path="/admin-dashboard/*"
-          element={
-            <ProtectedAdmin>
-              <MainLayout role="admin" onLogout={handleLogout} />
-            </ProtectedAdmin>
-          }
-        >
-          <Route index element={<AdminDashboard />} />
-          <Route path="about" element={<AboutPage />} />
-          <Route path="wallet" element={<WalletPage />} />
-          <Route path="contact" element={<ContactUsersPage />} />
-          <Route path="products" element={<AllProducts />} />
-          <Route path="publish" element={<PublishProduct />} />
-          <Route path="admingestion" element={<AdminGestionP />} />
-          <Route path="users" element={<AdminUsers />} />
-          <Route path="notifications" element={<NotificationsPage />} />
-        </Route>
+        {/* Routes admin */}
+        {user?.role === "admin" && (
+          <Route
+            path="/admin-dashboard/*"
+            element={
+              <ProtectedAdmin>
+                <MainLayout role="admin" onLogout={handleLogout} />
+              </ProtectedAdmin>
+            }
+          >
+            <Route index element={<AdminDashboard />} />
+            <Route path="about" element={<AboutPage />} />
+            <Route path="wallet" element={<WalletPage />} />
+            <Route path="contact" element={<ContactUsersPage />} />
+            <Route path="products" element={<AllProducts />} />
+            <Route path="publish" element={<PublishProduct />} />
+            <Route path="admingestion" element={<AdminGestionP />} />
+            <Route path="users" element={<AdminUsers />} />
+            <Route path="notifications" element={<NotificationsPage />} />
+          </Route>
+        )}
 
-        {/* User Routes */}
-        <Route
-          path="/user-dashboard/*"
-          element={
-            user?.role === "user" ? (
-              <MainLayout role="user" onLogout={handleLogout} />
-            ) : (
-              <Navigate to="/login" replace />
-            )
-          }
-        >
-          <Route index element={<UserDashboard />} />
-          <Route path="products" element={<MyProducts />} />
-          <Route path="market" element={<AllProducts />} />
-          <Route path="gains" element={<MesGains />} />
-          <Route path="contact" element={<ContactUsersPage />} />
-          <Route path="notifications" element={<NotificationsPage />} />
-        </Route>
+        {/* Routes user */}
+        {user?.role === "user" && (
+          <Route
+            path="/user-dashboard/*"
+            element={<MainLayout role="user" onLogout={handleLogout} />}
+          >
+            <Route index element={<UserDashboard />} />
+            <Route path="products" element={<MyProducts />} />
+            <Route path="market" element={<AllProducts />} />
+            <Route path="gains" element={<MesGains />} />
+            <Route path="contact" element={<ContactUsersPage />} />
+            <Route path="notifications" element={<NotificationsPage />} />
+          </Route>
+        )}
 
-        {/* Redirect all unknown paths */}
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        {/* Redirect unknown paths */}
+        <Route
+          path="*"
+          element={
+            <Navigate
+              to={
+                user
+                  ? user.role === "admin"
+                    ? "/admin-dashboard"
+                    : "/user-dashboard"
+                  : "/login"
+              }
+              replace
+            />
+          }
+        />
       </Routes>
-    </NotificationsProvider>
+    </NotificationProvider>
   );
 }

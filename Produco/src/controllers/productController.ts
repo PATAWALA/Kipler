@@ -1,42 +1,64 @@
 // controllers/productController.ts
-import { Request, Response, RequestHandler  } from "express";
-import Product, {IUserPopulated} from "../models/produit";
+import { Request, Response, RequestHandler } from "express";
+import Product, { IUserPopulated } from "../models/produit";
 import { Types } from "mongoose";
 import { AuthRequest } from "../utils/middleware/authMiddleware";
 import { createNotification } from "../controllers/notificationsControllers";
-import { emitNotification } from "../socket";
-import User from '../models/user';
 import { formatProduct } from "../utils/productFormateur";
+import Notification, { INotification } from "../models/notifications";
+import { emitNotification } from "../socket";
+
 
 
 interface MulterRequest extends Request {
   file?: Express.Multer.File;
-  user?: any; // injecté par middleware protect
+  user?: any; // injecté par middleware protect   
 }
 
-// 🔹 Créer un produit
-export const createProduct = async (req: MulterRequest, res: Response) => {
+export const createProduct = async (req: MulterRequest, res: Response) => { 
   try {
     if (!req.user) return res.status(401).json({ message: "Non autorisé 🚫" });
 
-    const { name, price, description, category } = req.body;
+    const { name, price, description, category, stock } = req.body;
 
+    if (!name || !price || !category) {
+      return res.status(400).json({ message: "Nom, prix et catégorie sont requis." });
+    }
+
+    // ✅ Création du produit
     const newProduct = new Product({
       name,
       price,
       description,
+      category: category || "Others",
+      stock: stock || "Disponible",
       image: req.file
         ? `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`
         : null,
       user: req.user._id,
       status: "approuvé",
-      category: category || "Général",
-      stock: "Disponible",
     });
 
     await newProduct.save();
     await newProduct.populate("user", "_id name phone");
     await newProduct.populate("likes", "_id name phone");
+
+    console.log("PRODUCT ID:", newProduct._id);
+
+    // 🔔 Création de la notification globale (tout le monde sauf l’auteur)
+    const notif = new Notification({
+      type: "new_product",
+      message: `Nouveau produit ajouté : ${newProduct.name}`,
+      link: `/market/${newProduct._id}`,
+      isRead: false,
+      targetRole: "all",
+      product: newProduct._id.toString(),  
+    });
+
+    await notif.save();
+
+    // ⚡ Émission via WebSocket (exclure l’auteur)
+    emitNotification("all", notif, { excludeUserId: req.user._id.toString() });
 
     res.status(201).json({
       message: "Produit publié avec succès ✅",
@@ -48,7 +70,6 @@ export const createProduct = async (req: MulterRequest, res: Response) => {
   }
 };
 
-// 🔹 Publier un produit
 export const publishProduct = async (req: MulterRequest, res: Response) => {
   try {
     const product = await Product.findById(req.params.id)
@@ -62,6 +83,7 @@ export const publishProduct = async (req: MulterRequest, res: Response) => {
     if (!isOwner && !isAdmin) return res.status(403).json({ message: "Accès refusé 🚫" });
 
     const { name, price, description, category, stock } = req.body;
+
     if (name) product.name = name;
     if (price) product.price = price;
     if (description) product.description = description;
@@ -76,12 +98,52 @@ export const publishProduct = async (req: MulterRequest, res: Response) => {
     await product.populate("user", "_id name phone");
     await product.populate("likes", "_id name phone");
 
+    // 🔔 Notif pour le propriétaire
+    if (product.user) {
+      await createNotification(
+        "approve",
+        `Votre produit "${product.name}" est publié ✅`,
+        {
+          userId: (product.user as any)._id.toString(),
+          productId: product._id.toString(),
+          link: `/products/${product._id.toString()}`,
+        }
+      );
+    }
+
+    // 🔔 Notif pour tous les utilisateurs
+    await createNotification(
+      "new_product",
+      `🆕 Nouveau produit disponible : "${product.name}" !`,
+      {
+        targetRole: "all",
+        productId: product._id.toString(),
+        link: `/products/${product._id.toString()}`,
+      }
+    );
+
     res.json({
       message: "✅ Produit publié avec succès",
       product: formatProduct(product),
     });
   } catch (err) {
     console.error("Erreur publication:", err);
+    res.status(500).json({ message: "Erreur serveur" });
+  }
+};
+
+// --- ⚡ Récupérer produits par catégorie
+export const getProductsByCategory = async (req: Request, res: Response) => {
+  try {
+    const { category } = req.params;
+    const products = await Product.find({ category, status: "approuvé" })
+      .populate("user", "_id name phone")
+      .populate("likes", "_id name phone")
+      .sort({ createdAt: -1 });
+
+    res.json(products.map(formatProduct));
+  } catch (err) {
+    console.error("Erreur getProductsByCategory:", err);
     res.status(500).json({ message: "Erreur serveur" });
   }
 };
@@ -230,7 +292,6 @@ export const updateProduct = async (req: MulterRequest, res: Response) => {
   }
 };
 
-
 // 🛑 Bloquer / supprimer un produit en tant qu’admin
 export const adminBlockProduct = async (req: MulterRequest, res: Response) => {
   try {
@@ -243,13 +304,16 @@ export const adminBlockProduct = async (req: MulterRequest, res: Response) => {
     product.status = "supprimé";
     await product.save();
 
-    // 🔔 Créer une notif pour l’utilisateur propriétaire du produit
+    // 🔔 Notifier le propriétaire
     if (product.user) {
       await createNotification(
-        (product.user as any)._id.toString(),
         "block",
-        `Votre produit "${product.name}" a été bloqué 🚫. Contactez l’administrateur pour en savoir plus.`,
-        { productId: product._id }
+        `🚫 Votre produit "${product.name}" a été bloqué par l’administrateur.`,
+        {
+          userId: (product.user as any)._id.toString(),
+          productId: product._id.toString(),
+          link: `/products/${product._id.toString()}`,
+        }
       );
     }
 
@@ -258,7 +322,7 @@ export const adminBlockProduct = async (req: MulterRequest, res: Response) => {
       product: {
         ...product.toObject(),
         author: product.user
-          ? { _id: (product.user as any)._id, name: (product.user as any).name }
+          ? { _id: (product.user as any)._id.toString(), name: (product.user as any).name }
           : null,
       },
     });
@@ -268,27 +332,37 @@ export const adminBlockProduct = async (req: MulterRequest, res: Response) => {
   }
 };
 
-
-// 🟢 Approuver un produit
 export const adminApproveProduct = async (req: MulterRequest, res: Response) => {
   try {
     const product = await Product.findById(req.params.id).populate("user", "_id name");
-    if (!product) {
-      return res.status(404).json({ message: "Produit introuvable" });
-    }
+    if (!product) return res.status(404).json({ message: "Produit introuvable" });
 
-    product.status = "approuvé"; // ✅ validation admin
+    product.status = "approuvé"; // validation admin
     await product.save();
 
-    // 🔔 Créer une notif pour l’utilisateur propriétaire
+    // 🔔 Notif pour le propriétaire
     if (product.user) {
       await createNotification(
-        (product.user as any)._id.toString(),
         "approve",
         `Bonne nouvelle 🎉 ! Votre produit "${product.name}" est maintenant approuvé et disponible.`,
-        { productId: product._id }
+        {
+          userId: (product.user as any)._id.toString(),
+          productId: product._id.toString(),
+          link: `/products/${product._id.toString()}`,
+        }
       );
     }
+
+    // 🔔 Notif pour tous les utilisateurs (sauf le propriétaire)
+    await createNotification(
+      "new_product",
+      `🆕 Nouveau produit disponible : "${product.name}" !`,
+      {
+        targetRole: "all",
+        productId: product._id.toString(),
+        link: `/products/${product._id.toString()}`,
+      }
+    );
 
     res.json({
       message: "Produit approuvé ✅",
@@ -305,7 +379,7 @@ export const adminApproveProduct = async (req: MulterRequest, res: Response) => 
   }
 };
 
-// --- ⚡ Ajouter un like (pour user connecté ou invité)
+// --- ⚡ Ajouter un like (pour user connecté ou invité) 
 export const likeProduct = async (req: AuthRequest, res: Response) => {
   try {
     const product = await Product.findById(req.params.id)
@@ -314,32 +388,33 @@ export const likeProduct = async (req: AuthRequest, res: Response) => {
 
     if (!product) return res.status(404).json({ message: "Produit introuvable" });
 
-            if (req.user?._id) {
-              // ✅ User connecté
-              const userId = req.user._id.toString();
-              const alreadyLiked = product.likes.some((like) => {
-          if (like instanceof Types.ObjectId) {
-            return like.toString() === userId.toString(); // ObjectId converti en string
-          }
-          // like est IUserPopulated ou string (guest)
-          if (typeof like === "string") {
-            return like === userId;
-          }
-          // IUserPopulated
-          return like._id.toString() === userId.toString();
-        });
+    if (req.user?._id) {
+      // ✅ User connecté
+      const userId = req.user._id.toString();
+
+      // Vérifier si déjà liké
+      const alreadyLiked = product.likes.some((like) => {
+        if (like instanceof Types.ObjectId) return like.toString() === userId;
+        if (typeof like === "string") return like === userId;
+        return like._id.toString() === userId;
+      });
+
       if (!alreadyLiked) {
         product.likes.push(new Types.ObjectId(userId));
 
         // 🔔 Notification pour le propriétaire
         if (product.user && product.user._id.toString() !== userId) {
-          const notif = await createNotification(
-            product.user._id.toString(),
-            "like",
-            `❤️ ${req.user.name} a aimé votre produit "${product.name}"`,
-            { productId: product._id, likerId: userId }
-          );
-          emitNotification(product.user._id.toString(), notif);
+          await createNotification(
+      "like",
+      `❤️ ${req.user.name} a aimé votre produit "${product.name}"`,
+  {    
+        userId: product.user._id.toString(), // destinataire
+        targetRole: undefined, // ou ne pas le définir
+        data: { likerId: userId, productId: product._id.toString() },
+        link: `/products/${product._id}`,
+        excludeUserId: userId, // exclure l’auteur du like si connecté
+      }
+    );
         }
       }
     } else {
@@ -352,8 +427,9 @@ export const likeProduct = async (req: AuthRequest, res: Response) => {
 
     await product.save();
     res.json(product);
-  } catch (err) {
-    console.error("Erreur likeProduct:", err);
+
+  } catch (error) {
+    console.error("Erreur likeProduct:", error);
     res.status(500).json({ message: "Erreur serveur" });
   }
 };
@@ -384,11 +460,12 @@ export const unlikeProduct = async (req: AuthRequest, res: Response) => {
   }
 };
 
-// --- 🔹 Incrémenter les vues
+
 // Incrémenter les vues d’un produit
 export const viewProduct: RequestHandler = async (req, res) => {
   try {
     const { id } = req.params;
+
     const product = await Product.findByIdAndUpdate(
       id,
       { $inc: { views: 1 } }, // incrémente de +1
@@ -401,7 +478,12 @@ export const viewProduct: RequestHandler = async (req, res) => {
       return res.status(404).json({ message: "Produit introuvable" });
     }
 
-    res.json(product);
+    res.json({
+      ...product.toObject(),
+      author: product.user
+        ? { _id: (product.user as any)._id.toString(), name: (product.user as any).name }
+        : null,
+    });
   } catch (error: any) {
     console.error("❌ Erreur lors de l’incrémentation des vues :", error.message);
     res.status(500).json({ message: "Erreur serveur" });

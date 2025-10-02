@@ -1,4 +1,4 @@
-import { Express } from "express";
+import { Socket as SocketIOSocket, Server as SocketIOServer } from "socket.io";
 
 declare global {
   namespace Express {
@@ -12,6 +12,8 @@ declare global {
         phone?: string;
         role?: string;
       };
+      io?: SocketIOServer; // ✅ io attaché directement à la requête
+      socket?: SocketIOSocket; // optionnel si tu veux l’utiliser plus tard
     }
   }
 }

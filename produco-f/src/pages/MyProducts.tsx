@@ -7,6 +7,7 @@ import {
   deleteProduct,
   updateProduct,
   ProductType,
+  getProductsByCategory
 } from "../services/productServices";
 import { getCurrentUser } from "../utils/auth";
 import { UserType } from "../utils/types";
@@ -22,6 +23,12 @@ export default function MyProducts({ initialProducts = [] }: MyProductsProps) {
   const [modalOpen, setModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<ProductType | null>(null);
+  // State des catégories prédéfinies
+  const categories = ["Électronique", "Vêtements", "Maison", "Alimentation", "Services"];
+  // Catégorie sélectionnée (pour filtrer l'affichage en haut)
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
+  // Catégorie choisie dans le formulaire (ajout/édition produit)
+  const [category, setCategory] = useState<string>("");
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -33,24 +40,32 @@ export default function MyProducts({ initialProducts = [] }: MyProductsProps) {
 
   const currentUser: UserType | null = getCurrentUser();
 
-  // Charger mes produits
   useEffect(() => {
-    if (!currentUser) return;
+  if (!currentUser) return;
 
-    const fetchMyProducts = async () => {
-      setLoading(true);
-      try {
-        const data = await getProductsByUser(currentUser._id);
-        setProducts(data.map((p) => withSafeAuthor(p, currentUser)));
-      } catch (err) {
-        console.error("Erreur lors du chargement :", err);
-      } finally {
-        setLoading(false);
+  const fetchMyProducts = async () => {
+    setLoading(true);
+    try {
+      let data;
+      if (selectedCategory) {
+        // 📌 Si une catégorie est sélectionnée → appelle le service getProductsByCategory
+        data = await getProductsByCategory(selectedCategory);
+      } else {
+        // 📌 Sinon → charge tous les produits de l’utilisateur
+        data = await getProductsByUser(currentUser._id);
       }
-    };
 
-    fetchMyProducts();
-  }, [currentUser?._id]);
+      setProducts(data.map((p) => withSafeAuthor(p, currentUser)));
+    } catch (err) {
+      console.error("Erreur lors du chargement :", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchMyProducts();
+}, [currentUser?._id, selectedCategory]); // 🔑 relance quand la catégorie change
+
 // Ajouter un produit
 const handleAddProduct = async (e: React.FormEvent) => {
   e.preventDefault();
@@ -66,6 +81,7 @@ const handleAddProduct = async (e: React.FormEvent) => {
     formData.append("image", imageFile);
     formData.append("user", currentUser._id);
     formData.append("status", "approuvé");
+    formData.append("category", category || "Général"); // ✅ nouvelle ligne
 
     const added: ProductType = await addProduct(formData);
 
@@ -79,8 +95,6 @@ const handleAddProduct = async (e: React.FormEvent) => {
       image: added.image || "",
     };
 
-    console.log("🟢 Produit ajouté (frontend) :", addedWithAuthor);
-
     setProducts((prev) => [...prev, addedWithAuthor]);
 
     // Reset form
@@ -89,6 +103,7 @@ const handleAddProduct = async (e: React.FormEvent) => {
     setPrice(0);
     setDescription("");
     setImageFile(null);
+    setCategory(""); // ✅ reset catégorie
 
     alert("✅ Votre produit a été ajouté avec succès !");
   } catch (err: unknown) {
@@ -118,7 +133,7 @@ const handleAddProduct = async (e: React.FormEvent) => {
 };
 
   // Mettre à jour un produit
-const handleUpdateProduct = async (e: React.FormEvent) => {
+  const handleUpdateProduct = async (e: React.FormEvent) => {
   e.preventDefault();
   if (!editingProduct || !currentUser) return;
 
@@ -130,11 +145,9 @@ const handleUpdateProduct = async (e: React.FormEvent) => {
     formData.append("price", price.toString());
     formData.append("description", description);
     formData.append("user", currentUser._id);
-
-    // ⚡ Important : on force le status à "en_attente"
     formData.append("status", "en_attente");
-
     if (imageFile) formData.append("image", imageFile);
+    formData.append("category", category || "Général"); // ✅ ajout catégorie
 
     const updated: ProductType = await updateProduct(editingProduct._id!, formData);
 
@@ -148,8 +161,6 @@ const handleUpdateProduct = async (e: React.FormEvent) => {
       image: updated.image || "",
     };
 
-    console.log("🟢 Produit mis à jour (frontend) :", updatedWithAuthor);
-
     setProducts((prev) =>
       prev.map((p) => (p._id === editingProduct._id ? updatedWithAuthor : p))
     );
@@ -157,6 +168,7 @@ const handleUpdateProduct = async (e: React.FormEvent) => {
     setEditModalOpen(false);
     setEditingProduct(null);
     setImageFile(null);
+    setCategory(""); // ✅ reset catégorie
 
     alert("✅ Votre produit a été mis à jour");
   } catch (err: unknown) {
@@ -170,8 +182,8 @@ const handleUpdateProduct = async (e: React.FormEvent) => {
 
  return (
   <div className="p-6">
-  {/* 🔹 Header Mes Produits */}
-  <motion.div
+   {/* 🔹 Header Mes Produits */}
+   <motion.div
     className="flex flex-col items-center justify-center text-center bg-white rounded-2xl shadow-sm p-6 mb-8"
     initial={{ opacity: 0, y: -20 }}
     animate={{ opacity: 1, y: 0 }}
@@ -197,6 +209,34 @@ const handleUpdateProduct = async (e: React.FormEvent) => {
     <span className="font-semibold">Nouveau produit</span>
   </motion.button>
   </motion.div>
+
+  {/* 🔹 Filtres Catégories */}
+<div className="flex flex-wrap justify-center gap-3 mb-8">
+  {categories.map((cat) => (
+    <button
+      key={cat}
+      className={`px-4 py-2 rounded-lg border transition ${
+        selectedCategory === cat
+          ? "bg-blue-600 text-white border-blue-600"
+          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+      }`}
+      onClick={() => setSelectedCategory(cat)}
+    >
+      {cat}
+    </button>
+  ))}
+  <button
+    className={`px-4 py-2 rounded-lg border transition ${
+      selectedCategory === ""
+        ? "bg-green-600 text-white border-green-600"
+        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+    }`}
+    onClick={() => setSelectedCategory("")}
+  >
+    Tous
+  </button>
+</div>
+
 
   {/* 🔹 Chargement */}
   {loading ? (
@@ -247,6 +287,7 @@ const handleUpdateProduct = async (e: React.FormEvent) => {
                 setName(p.name);
                 setPrice(p.price);
                 setDescription(p.description || "");
+                setCategory(p.category || "");
                 setImageFile(null);
                 setEditModalOpen(true);
               }}
@@ -344,6 +385,25 @@ const handleUpdateProduct = async (e: React.FormEvent) => {
               onChange={(e) => setDescription(e.target.value)}
               className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
             />
+          </div>
+          {/* Catégorie */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Catégorie
+            </label>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              required
+              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">-- Choisissez une catégorie --</option>
+              {categories.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Image */}
@@ -454,6 +514,25 @@ const handleUpdateProduct = async (e: React.FormEvent) => {
               className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
             />
           </div>
+          {/* Catégorie */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Catégorie
+              </label>
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                required
+                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">-- Choisissez une catégorie --</option>
+                {categories.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+              </select>
+            </div>
 
           {/* Image */}
           <div>

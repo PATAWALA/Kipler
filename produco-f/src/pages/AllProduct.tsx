@@ -18,54 +18,50 @@ const PRODUCT_STATUS = {
   DELETED: "supprimé",
 } as const;
 
+const CATEGORIES = ["Tous", "Électronique", "Vêtements", "Maison", "Alimentation", "Autres"];
+
 export default function AllProducts() {
   const [products, setProducts] = useState<ProductType[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState("recent");
+  const [category, setCategory] = useState("Tous");
+
   const currentUser = getCurrentUser() as UserType | null;
   const navigate = useNavigate();
 
   useEffect(() => {
-  const fetchProducts = async () => {
-    try {
-      // Récupération de tous les produits
-      const data: ProductType[] = await getAllProducts();
-      console.log("📦 Produits récupérés :", data);
+    const fetchProducts = async () => {
+      try {
+        const data: ProductType[] = await getAllProducts();
+        const filteredProducts = data.filter(
+          (p) => p.status === PRODUCT_STATUS.APPROVED
+        );
 
-      // Filtrer uniquement les produits valides
-      const filteredProducts = data.filter(
-        (p) =>
-          p.status !== PRODUCT_STATUS.DELETED &&
-          p.status !== PRODUCT_STATUS.REJECTED
-      );
+        const productsWithViews = await Promise.all(
+          filteredProducts.map(async (product) => {
+            try {
+              const updated = await viewProduct(product._id);
+              return { ...product, views: updated.views ?? product.views };
+            } catch {
+              return product;
+            }
+          })
+        );
 
-      // Optionnel : mettre à jour les vues via viewProduct
-      const productsWithViews = await Promise.all(
-        filteredProducts.map(async (product) => {
-          try {
-            const updated = await viewProduct(product._id);
-            return { ...product, views: updated.views ?? product.views };
-          } catch {
-            return product;
-          }
-        })
-      );
+        setProducts(productsWithViews);
+      } catch (err) {
+        console.error("❌ Erreur lors du chargement des produits :", err);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-      setProducts(productsWithViews);
-    } catch (err) {
-      console.error("❌ Erreur lors du chargement des produits :", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  fetchProducts();
-}, []);
+    fetchProducts();
+  }, []);
 
   const handleLike = async (productId: string) => {
     if (!currentUser) return;
-
     const product = products.find((p) => p._id === productId);
     if (!product) return;
 
@@ -85,22 +81,21 @@ export default function AllProducts() {
       )
     );
 
-
     try {
       if (alreadyLiked) await unlikeProduct(productId, userId);
       else await likeProduct(productId, userId);
-    } catch (err) {
-      console.error("❌ Erreur like/unlike :", err);
+    } catch {
       setProducts((prev) =>
         prev.map((p) => (p._id === productId ? product : p))
       );
-      alert("Une erreur est survenue. Veuillez réessayer.");
     }
   };
 
   const filteredAndSorted = products
-    .filter((p) =>
-      p.name.toLowerCase().includes(search.toLowerCase().trim())
+    .filter(
+      (p) =>
+        p.name.toLowerCase().includes(search.toLowerCase().trim()) &&
+        (category === "Tous" || p.category === category)
     )
     .sort((a, b) => {
       switch (sort) {
@@ -128,10 +123,31 @@ export default function AllProducts() {
     );
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8">
-      <h1 className="text-2xl sm:text-3xl font-extrabold mb-6 text-gray-800 text-center">
-        🛍️ Produits disponibles sur le Marché
+    <div className="p-4 sm:p-6 lg:p-10 max-w-7xl mx-auto">
+      {/* Texte principal */}
+      <h1 className="text-3xl font-extrabold mb-2 text-gray-800 text-center">
+        Découvrez notre sélection de produits
       </h1>
+      <p className="text-center text-gray-600 mb-6">
+        Vous pouvez choisir les types de produits que vous souhaitez en cliquant sur les catégories ci-dessous.
+      </p>
+
+      {/* Catégories */}
+      <div className="flex flex-wrap justify-center gap-3 mb-6">
+        {CATEGORIES.map((cat) => (
+          <button
+            key={cat}
+            className={`px-4 py-2 rounded-xl border text-sm font-medium transition ${
+              category === cat
+                ? "bg-blue-600 text-white border-blue-600"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+            }`}
+            onClick={() => setCategory(cat)}
+          >
+            {cat}
+          </button>
+        ))}
+      </div>
 
       {/* Recherche + tri */}
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-8">
@@ -146,12 +162,12 @@ export default function AllProducts() {
           />
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           <Filter size={18} className="text-gray-500" />
           <select
             value={sort}
             onChange={(e) => setSort(e.target.value)}
-            className="px-3 py-2 border rounded-xl focus:ring-2 focus:ring-blue-400 outline-none"
+            className="px-3 py-2 border rounded-xl focus:ring-2 focus:ring-blue-400 outline-none w-full sm:w-auto"
           >
             <option value="recent">🔄 Plus récents</option>
             <option value="price-asc">⬆️ Prix croissant</option>
@@ -162,6 +178,7 @@ export default function AllProducts() {
         </div>
       </div>
 
+      {/* Liste des produits */}
       {filteredAndSorted.length === 0 ? (
         <p className="text-gray-500 text-center">
           Aucun produit ne correspond à votre recherche
@@ -170,11 +187,11 @@ export default function AllProducts() {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredAndSorted.map((product) => {
             const isOwner = currentUser?._id === product.author._id;
-                        
+
             return (
               <div
                 key={product._id}
-                className="bg-white rounded-2xl shadow-md hover:shadow-lg transition overflow-hidden flex flex-col"
+                className="bg-white rounded-2xl shadow-md hover:shadow-xl transition overflow-hidden flex flex-col"
               >
                 <div className="relative">
                   <img
@@ -190,17 +207,10 @@ export default function AllProducts() {
                     }
                   />
 
-                  {/* Badge statut produit */}
-                  <span className="absolute top-3 right-3 text-xs font-semibold px-3 py-1 rounded-full bg-green-100 text-green-700">
+                  {/* Badge statut */}
+                  <span className="absolute top-3 left-3 text-xs font-semibold px-3 py-1 rounded-full bg-green-100 text-green-700">
                     {PRODUCT_STATUS.APPROVED}
                   </span>
-
-                  {/* Badge “Votre produit” si propriétaire */}
-                  {isOwner && (
-                    <span className="absolute top-3 left-3 text-xs font-semibold px-3 py-1 rounded-full bg-blue-100 text-blue-700">
-                      ✅ Votre produit
-                    </span>
-                  )}
                 </div>
 
                 <div className="p-4 flex flex-col flex-grow">
@@ -208,21 +218,12 @@ export default function AllProducts() {
                     {product.name}
                   </h2>
 
-                  <p className="text-gray-500 text-sm mb-1">
-                    Stock :{" "}
+                  <p className="text-gray-500 text-sm mb-2">
+                    Vendu par :{" "}
                     <span className="font-medium text-gray-700">
-                      {product.stock || "Disponible"}
+                      {product.author.name || "Utilisateur inconnu"}
                     </span>
                   </p>
-
-                  {!isOwner && (
-                    <p className="text-gray-500 text-sm mb-2">
-                      Auteur : {" "}
-                      <span className="font-medium text-gray-700">
-                        {product.author.name || "Utilisateur inconnu"}
-                      </span>
-                    </p>
-                  )}
 
                   <p className="text-green-600 font-bold text-lg mb-3">
                     {product.price.toLocaleString()} FCFA
@@ -230,7 +231,6 @@ export default function AllProducts() {
 
                   {/* Actions */}
                   <div className="mt-auto flex flex-wrap justify-between items-center gap-2">
-                    {/* Likes */}
                     {currentUser && (
                       <button
                         onClick={() => handleLike(product._id)}
@@ -252,16 +252,16 @@ export default function AllProducts() {
                       </button>
                     )}
 
-                    {/* Vues */}
                     <div className="flex items-center gap-1 text-yellow-700 bg-yellow-100 px-3 py-2 rounded-xl">
                       <Eye size={18} />
                       <span>{product.views || 0} Vues</span>
                     </div>
 
-                    {/* Commander uniquement si ce n’est pas son produit */}
                     {!isOwner && (
                       <a
-                        href={`https://wa.me/${product.author.phone || "22953173035"}??text=Bonjour, je suis intéressé par *${product.name}* au prix de ${product.price} FCFA.`}
+                        href={`https://wa.me/${
+                          product.author.phone || "22953173035"
+                        }?text=Bonjour, je suis intéressé par *${product.name}* au prix de ${product.price} FCFA.`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-xl transition font-medium"
@@ -279,7 +279,7 @@ export default function AllProducts() {
       )}
 
       {!currentUser && (
-        <div className="text-center mt-8">
+        <div className="text-center mt-10">
           <button
             onClick={() => navigate("/register")}
             className="bg-purple-600 text-white px-6 py-3 rounded-xl shadow-md hover:bg-purple-700 transition font-semibold"
